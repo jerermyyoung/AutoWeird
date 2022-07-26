@@ -308,16 +308,6 @@ def main(args):
         train_true_head[(relation, tail)].append(head)
         train_true_tail[(head, relation)].append(tail)
     # KGE部分
-    '''
-    rng = np.random.default_rng()
-    idxs_num = rng.choice(56, size=5)
-    idxs_sign = rng.choice(2, size=5)
-    idxs = []
-    for iii in range(5):
-        idxs.append([idxs_num[iii]//7-1, idxs_num[iii]%7, idxs_sign[iii]])
-    '''
-    # idxs = [[4,6,0], [2,5,1], [-1,2,0], [5,4,1]]
-    idxs = [[4,6,0], [4,6,0], [2,5,1], [-1,2,0], [5,4,1]]
     kge_model = KGEModel(
         model_name=args.model,
         nentity=nentity,
@@ -344,14 +334,13 @@ def main(args):
         triples=train_triples,
         ablate_anchors=args.noanc,
         device=torch.device('cuda') if args.cuda else torch.device('cpu'),
-        idxs = idxs
+        idxs = []
     )
     # 加载日志信息
     logging.info('Model Parameter Configuration:')
     for name, param in kge_model.named_parameters():
         logging.info('Parameter %s: %s, require_grad = %s' % (name, str(param.size()), str(param.requires_grad)))
     logging.info(f"Total number of params: {sum(p.numel() for p in kge_model.parameters())}")
-    logging.info('Scoring Function Configuration: %s' % (str(idxs)))
 
     if args.cuda:
         kge_model = kge_model.cuda()

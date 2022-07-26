@@ -100,7 +100,7 @@ class KGEModel(nn.Module):
 
 
         # Do not forget to modify this line when you add a new model in the "forward" function
-        if model_name not in ['TransE', 'DistMult', 'ComplEx', 'RotatE', 'AutoSF', 'PairRE', 'TripleRE', 'InterHT', 'TranS', 'AutoT']:
+        if model_name not in ['TransE', 'DistMult', 'ComplEx', 'RotatE', 'AutoSF', 'PairRE', 'TripleRE', 'InterHT', 'TranS', 'AutoWeird']:
             raise ValueError('model %s not supported' % model_name)
 
         if model_name == 'RotatE' and (not double_entity_embedding or double_relation_embedding):
@@ -115,7 +115,7 @@ class KGEModel(nn.Module):
         if model_name == 'TripleRE' and (not triple_relation_embedding):
             raise ValueError('TripleRE should use --triple_relation_embedding')
 
-        if (model_name == 'InterHT' or model_name == 'TranS' or model_name == 'AutoT') and (not double_entity_embedding or not triple_relation_embedding):
+        if (model_name == 'InterHT' or model_name == 'TranS' or model_name == 'AutoWeird') and (not double_entity_embedding or not triple_relation_embedding):
             raise ValueError('InterHT should use --double_entity_embedding and --triple_relation_embedding')
 
         self.evaluator = evaluator
@@ -205,7 +205,7 @@ class KGEModel(nn.Module):
 
             rels_head, rels_mid, rels_tail = torch.chunk(rels,3,dim=2)
 
-            if self.model_name in ['InterHT', 'TranS', 'AutoT'] :
+            if self.model_name in ['InterHT', 'TranS', 'AutoWeird'] :
                 rels_mid = torch.cat([rels_head, rels_tail], dim=2)
 
             anc_embs = torch.cat([anc_embs, rels_mid], dim=1)  # (bs, ancs+rel_sample_size, dim)
@@ -285,8 +285,8 @@ class KGEModel(nn.Module):
             'TranS': self.TranS
         }
 
-        if self.model_name == 'AutoT':
-            score = self.AutoT(head, relation, tail, mode, self.idxs)
+        if self.model_name == 'AutoWeird':
+            score = self.AutoWeird(head, relation, tail, mode)
         elif self.model_name in model_func:
             score = model_func[self.model_name](head, relation, tail, mode)
         else:
@@ -385,7 +385,7 @@ class KGEModel(nn.Module):
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
 
-    def AutoT(self, head, relation, tail, mode, idxs=[]):
+    def AutoWeird(self, head, relation, tail, mode):
         a_head, b_head = torch.chunk(head, 2, dim=2)
         re_head, re_mid, re_tail = torch.chunk(relation, 3, dim=2)
         a_tail, b_tail = torch.chunk(tail, 2, dim=2)
@@ -403,35 +403,7 @@ class KGEModel(nn.Module):
 
         embs = [a_head, b_head, re_head, re_mid, re_tail, a_tail, b_tail]
 
-        # score = a_head * b_tail - a_tail * b_head + a_head * re_head + a_tail * re_tail + re_mid
-        # score = - embs[3] * embs[5] + a_head * b_tail + a_head * re_mid + b_tail * re_tail + re_head * re_mid
-        # score = -2 * re_tail* b_tail + re_head * a_tail - re_head + a_tail * re_tail
-        score = -2 * embs[4]* embs[6] + embs[2] * embs[5] - embs[2] + embs[5] * embs[4]
-        '''
-        for iii, idx in enumerate(idxs):
-            if iii==0:
-                if idx[0]==-1:
-                    if idx[-1]==0:
-                        score = -embs[idx[1]]
-                    else:
-                        score = embs[idx[1]]
-                else:
-                    if idx[-1]==0:
-                        score = -embs[idx[0]]*embs[idx[1]]
-                    else:
-                        score = embs[idx[0]]*embs[idx[1]]
-            else:
-                if idx[0]==-1:
-                    if idx[-1]==0:
-                        score = score - embs[idx[1]]
-                    else:
-                        score = score + embs[idx[1]]
-                else:
-                    if idx[-1]==0:
-                        score = score - embs[idx[0]]*embs[idx[1]]
-                    else:
-                        score = score + embs[idx[0]]*embs[idx[1]]
-        '''
+        score = -re_tail* b_tail + re_head * a_tail - re_head + a_tail * re_tail
 
         score = self.gamma.item() - torch.norm(score, p=1, dim=2)
         return score
